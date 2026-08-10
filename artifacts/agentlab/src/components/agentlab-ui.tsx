@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react';
 import { Link, useLocation } from 'wouter';
 import {
-  Activity, AlertTriangle, ArrowUpRight, Bot, Check, ChevronRight, Circle,
+  Activity, AlertTriangle, ArrowUpRight, BookOpen, Bot, Check, ChevronRight, Circle,
   Clock3, Code2, Copy, Database, FileSearch, GitBranch, History as HistoryIcon,
   Layers3, LoaderCircle, Menu, Network, Radar, RotateCcw, Search, ShieldCheck,
   Sparkles, Terminal, X
@@ -24,7 +24,7 @@ export function Logo() {
 export function Shell({ children }: { children: React.ReactNode }) {
   const [location] = useLocation();
   const [mobileOpen, setMobileOpen] = useState(false);
-  const nav = [{ href: '/', label: 'Workspace', icon: Terminal }, { href: '/history', label: 'Run history', icon: HistoryIcon }, { href: '/agents', label: 'Agent catalog', icon: Bot }];
+  const nav = [{ href: '/', label: 'Workspace', icon: Terminal }, { href: '/history', label: 'Run history', icon: HistoryIcon }, { href: '/agents', label: 'Agent catalog', icon: Bot }, { href: '/documentation', label: 'Documentation', icon: BookOpen }];
   return <div className="min-h-[100dvh] bg-background text-foreground">
     <aside className={cn('sidebar-grid fixed inset-y-0 left-0 z-30 flex w-[244px] flex-col border-r border-sidebar-border bg-sidebar px-4 py-5 transition-transform duration-300 md:translate-x-0', mobileOpen ? 'translate-x-0' : '-translate-x-full')} data-testid="sidebar-navigation">
       <div className="mb-9 flex items-center justify-between px-2"><Logo /><button className="focus-ring text-sidebar-foreground/55 md:hidden" onClick={() => setMobileOpen(false)} aria-label="Close navigation" data-testid="button-close-navigation"><X size={18} /></button></div>

@@ -22,13 +22,32 @@ class LLMProvider:
     """Small provider seam. Agents never depend on a concrete client directly."""
 
     def __init__(self) -> None:
-        self.api_key = os.getenv("OPENAI_API_KEY", "").strip()
-        self.model = os.getenv("LLM_MODEL", "gpt-4o-mini")
-        self.client = AsyncOpenAI(api_key=self.api_key) if self.api_key else None
+        self.openrouter_key = os.getenv("OPENROUTER_API_KEY", "").strip()
+        self.openai_key = os.getenv("OPENAI_API_KEY", "").strip()
+        self.model = os.getenv("LLM_MODEL", "openai/gpt-oss-20b:free")
+        if self.openrouter_key:
+            self.client = AsyncOpenAI(
+                api_key=self.openrouter_key,
+                base_url="https://openrouter.ai/api/v1",
+                default_headers={
+                    "HTTP-Referer": "https://replit.com",
+                    "X-Title": "AgentLab",
+                },
+            )
+            self.provider = "OpenRouter"
+        elif self.openai_key:
+            self.client = AsyncOpenAI(api_key=self.openai_key)
+            self.model = os.getenv("LLM_MODEL", "gpt-4o-mini")
+            self.provider = "OpenAI"
+        else:
+            self.client = None
+            self.provider = "Local fallback"
 
     @property
     def name(self) -> str:
-        return "OpenAI" if self.client else "Local fallback"
+        if not self.client:
+            return self.provider
+        return f"{self.provider} · {self.model}"
 
     async def generate_json(
         self,
@@ -44,7 +63,7 @@ class LLMProvider:
                     model=self.model,
                     response_format={"type": "json_object"},
                     temperature=0.2,
-                    max_tokens=1200,
+                    max_tokens=8192,
                     messages=[
                         {"role": "system", "content": system_prompt},
                         {"role": "user", "content": user_prompt},

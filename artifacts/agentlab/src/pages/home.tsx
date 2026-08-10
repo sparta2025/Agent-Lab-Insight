@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { Link } from 'wouter';
-import { ArrowRight, FileText, LoaderCircle, Plus, SlidersHorizontal } from 'lucide-react';
+import { ArrowRight, FileCode2, FileText, LoaderCircle, Plus, Upload, X } from 'lucide-react';
 import { getListTasksQueryKey, useCreateTask, useHealthCheck, useListAgents, useListTasks } from '@workspace/api-client-react';
 import type { TaskMode, TaskRecord } from '@workspace/api-client-react';
 import { ErrorState, EmptyState, ModeBadge, PageHeader, RunDetail, Shell, SkeletonRows, TaskRow, cn } from '@/components/agentlab-ui';
@@ -23,6 +23,8 @@ export default function Home() {
   const [mode, setMode] = useState<TaskMode>('auto');
   const [selected, setSelected] = useState<TaskRecord | null>(null);
   const [submitted, setSubmitted] = useState(false);
+  const [fileName, setFileName] = useState('');
+  const [fileError, setFileError] = useState('');
   const recent = useMemo(() => (tasks.data ?? []).slice(0, 4), [tasks.data]);
 
   const submit = (event: React.FormEvent) => {
@@ -34,13 +36,32 @@ export default function Home() {
       onError: () => setSubmitted(false),
     });
   };
+  const loadFileIntoBuffer = async (file: File) => {
+    setFileError('');
+    if (file.size > 500_000) {
+      setFileError('Файл больше 500 KB. Выберите небольшой текстовый файл.');
+      return;
+    }
+    try {
+      const buffer = await file.arrayBuffer();
+      const decoded = new TextDecoder().decode(buffer).slice(0, 12000);
+      setContext(decoded);
+      setFileName(file.name);
+    } catch {
+      setFileError('Не удалось прочитать файл как текст.');
+    }
+  };
+  const clearFile = () => {
+    setFileName('');
+    setFileError('');
+  };
   return <Shell><div className="shell-grid min-h-[calc(100dvh-68px)]"><div className="mx-auto max-w-[1450px] px-5 py-7 md:px-9 lg:py-9">
     <PageHeader eyebrow="Analysis workspace" title="Make the unknown inspectable." description="Route a code problem through focused specialists, then review the evidence behind the decision." />
     <div className="grid gap-6 xl:grid-cols-[minmax(0,1.08fr)_minmax(330px,.92fr)]">
       <section className="rounded-xl border border-border bg-card p-5 card-surface sm:p-6" data-testid="panel-task-composer"><div className="mb-5 flex items-center justify-between"><div><div className="mb-1 flex items-center gap-2 text-sm font-bold"><Plus size={16} className="text-primary" />New analysis</div><p className="text-xs text-muted-foreground">Describe the decision you need help making.</p></div><span className="font-mono-app text-[9px] uppercase tracking-[.15em] text-muted-foreground">Input / 01</span></div>
         <form onSubmit={submit} className="space-y-5"><div><label htmlFor="task-input" className="mb-2 block font-mono-app text-[10px] font-bold uppercase tracking-[.13em] text-muted-foreground">Problem statement</label><textarea id="task-input" value={task} onChange={(e) => setTask(e.target.value)} placeholder="e.g. Why does the checkout worker occasionally process the same event twice?" className="focus-ring min-h-[132px] w-full resize-y rounded-lg border border-input bg-background/70 px-3.5 py-3 text-sm leading-relaxed outline-none transition-colors placeholder:text-muted-foreground/65 focus:border-primary" data-testid="input-task" required minLength={3} maxLength={4000} /><div className="mt-1.5 text-right font-mono-app text-[9px] text-muted-foreground">{task.length}/4000</div></div>
           <div><label className="mb-2 block font-mono-app text-[10px] font-bold uppercase tracking-[.13em] text-muted-foreground">Routing mode</label><div className="grid gap-2 sm:grid-cols-3">{modes.map((item) => <button key={item.value} type="button" onClick={() => setMode(item.value)} className={cn('focus-ring rounded-lg border p-3 text-left transition-all', mode === item.value ? 'border-primary bg-primary/8' : 'border-border bg-background/40 hover:border-primary/35')} data-testid={`button-mode-${item.value}`}><div className="mb-1 flex items-center justify-between"><span className={cn('text-xs font-bold', mode === item.value && 'text-primary')}>{item.title}</span><span className={cn('h-3 w-3 rounded-full border-2', mode === item.value ? 'border-primary bg-primary' : 'border-muted-foreground/40')} /></div><p className="text-[10px] leading-relaxed text-muted-foreground">{item.detail}</p></button>)}</div></div>
-          <div><label htmlFor="context-input" className="mb-2 flex items-center justify-between font-mono-app text-[10px] font-bold uppercase tracking-[.13em] text-muted-foreground"><span>Context <em className="font-sans font-normal normal-case tracking-normal text-muted-foreground/70">(optional)</em></span><span>{context.length}/12000</span></label><textarea id="context-input" value={context} onChange={(e) => setContext(e.target.value)} placeholder="Paste logs, constraints, or relevant architecture notes." className="focus-ring min-h-[82px] w-full resize-y rounded-lg border border-input bg-background/70 px-3.5 py-3 text-xs leading-relaxed outline-none transition-colors placeholder:text-muted-foreground/65 focus:border-primary" maxLength={12000} data-testid="input-context" /></div>
+          <div><label htmlFor="context-input" className="mb-2 flex items-center justify-between font-mono-app text-[10px] font-bold uppercase tracking-[.13em] text-muted-foreground"><span>Context <em className="font-sans font-normal normal-case tracking-normal text-muted-foreground/70">(optional)</em></span><span>{context.length}/12000</span></label><textarea id="context-input" value={context} onChange={(e) => { setContext(e.target.value); if (fileName) clearFile(); }} placeholder="Paste logs, constraints, or relevant architecture notes." className="focus-ring min-h-[82px] w-full resize-y rounded-lg border border-input bg-background/70 px-3.5 py-3 text-xs leading-relaxed outline-none transition-colors placeholder:text-muted-foreground/65 focus:border-primary" maxLength={12000} data-testid="input-context" /><div className="mt-2 flex flex-wrap items-center gap-2"><label className="focus-ring inline-flex cursor-pointer items-center gap-2 rounded-md border border-border bg-secondary px-2.5 py-2 text-[10px] font-semibold text-secondary-foreground transition-colors hover:border-primary/40 hover:text-primary" data-testid="label-upload-context"><Upload size={13} />Load text file<input type="file" className="sr-only" accept=".txt,.md,.json,.py,.js,.jsx,.ts,.tsx,.log,.yaml,.yml,.html,.css,.csv,.xml" onChange={(e) => { const file = e.target.files?.[0]; if (file) void loadFileIntoBuffer(file); e.currentTarget.value = ''; }} data-testid="input-context-file" /></label>{fileName && <span className="inline-flex items-center gap-1.5 rounded-md border border-primary/20 bg-primary/5 px-2.5 py-2 text-[10px] text-primary"><FileCode2 size={12} />{fileName}<button type="button" onClick={clearFile} className="focus-ring ml-1" aria-label="Clear loaded file" data-testid="button-clear-context-file"><X size={12} /></button></span>}<span className="text-[10px] text-muted-foreground">Reads into browser memory only.</span></div>{fileError && <p className="mt-2 text-[11px] text-destructive">{fileError}</p>}</div>
           {createTask.isError && <ErrorState detail="The task could not be submitted. Check the server connection and try again." onRetry={() => createTask.reset()} />}
           <button type="submit" disabled={task.trim().length < 3 || createTask.isPending || submitted} className="focus-ring flex w-full items-center justify-center gap-2 rounded-lg bg-primary px-4 py-3 text-sm font-bold text-primary-foreground transition-all hover:brightness-105 disabled:cursor-not-allowed disabled:opacity-45" data-testid="button-submit-task">{createTask.isPending || submitted ? <><LoaderCircle size={16} className="animate-spin-slow" />Routing task...</> : <>Run analysis <ArrowRight size={16} /></>}</button>
         </form>

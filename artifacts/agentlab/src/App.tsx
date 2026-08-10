@@ -7,6 +7,7 @@ import NotFound from '@/pages/not-found';
 import Home from '@/pages/home';
 import History from '@/pages/history';
 import Agents from '@/pages/agents';
+import Documentation from '@/pages/documentation';
 import {
   Route,
   Switch,
@@ -25,6 +26,7 @@ function Router() {
         <Route path="/" component={Home} />
         <Route path="/history" component={History} />
         <Route path="/agents" component={Agents} />
+        <Route path="/documentation" component={Documentation} />
         <Route component={NotFound} />
       </Switch>
     </RoutedErrorBoundary>
