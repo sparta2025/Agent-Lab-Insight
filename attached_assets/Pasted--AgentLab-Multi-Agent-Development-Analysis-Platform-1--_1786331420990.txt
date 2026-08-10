@@ -1,0 +1,930 @@
+# AgentLab — Multi-Agent Development Analysis Platform
+
+## 1. Цель проекта
+
+Создать небольшой клиент-серверный проект **AgentLab** — экспериментальную платформу для работы с системой AI-агентов и простым оркестратором.
+
+Главная идея:
+
+> Пользователь передаёт задачу, а Orchestrator самостоятельно определяет, каких специализированных агентов запустить, собирает их результаты и формирует итоговый ответ.
+
+Проект должен объединять три основных сценария:
+
+1. **Code Detective** — анализ проекта и поиск проблем.
+2. **Agent Debate** — несколько агентов независимо анализируют одну проблему, после чего Judge выбирает/синтезирует лучший результат.
+3. **AI Task Router** — определение подходящих агентов для конкретной задачи.
+
+Это **MVP / экспериментальный стенд**, а не production enterprise platform.
+
+Главный приоритет:
+
+> Максимально простая архитектура, небольшой объём кода и возможность нормально работать на бесплатном тарифе Replit.
+
+---
+
+# 2. КРИТИЧЕСКОЕ ТРЕБОВАНИЕ: TECHNOLOGY STACK
+
+## Backend — ТОЛЬКО PYTHON
+
+Backend должен быть реализован исключительно на:
+
+* Python 3.12+
+* FastAPI
+* Uvicorn
+* Pydantic
+
+AI/LLM integration должна находиться в Python backend.
+
+### ЗАПРЕЩЕНО использовать для backend:
+
+* Node.js
+* Express
+* NestJS
+* Next.js API routes
+* TypeScript backend
+* JavaScript backend
+* Deno
+* Bun
+
+**Replit часто предлагает TypeScript по умолчанию. Игнорировать эту рекомендацию.**
+
+Backend проекта должен быть Python/FastAPI.
+
+---
+
+# 3. Frontend
+
+Frontend:
+
+* React
+* TypeScript
+* Vite
+* обычный CSS или небольшой CSS-модуль
+* fetch API
+
+React используется **ТОЛЬКО для frontend**.
+
+Не использовать:
+
+* Next.js
+* серверный React
+* Node.js backend
+* сложные UI frameworks
+* Redux без необходимости
+* тяжелые state-management библиотеки
+
+Frontend должен быть максимально простым.
+
+---
+
+# 4. Архитектура
+
+Общая схема:
+
+```text
+                    React Client
+                         │
+                         │ HTTP
+                         ▼
+                  FastAPI Backend
+                         │
+                         ▼
+                  ┌──────────────┐
+                  │ Orchestrator │
+                  └──────┬───────┘
+                         │
+              ┌──────────┼──────────┐
+              │          │          │
+              ▼          ▼          ▼
+           Router     Analyzer    Debate
+              │          │          │
+              │       ┌──┴──┐    ┌──┴──┐
+              │       │     │    │     │
+              ▼       ▼     ▼    ▼     ▼
+            Agent   Security Bug  Code  Architecture
+              │
+              └──────────┬───────────┘
+                         ▼
+                       Judge
+                         │
+                         ▼
+                      Result
+                         │
+                         ▼
+                    React Client
+```
+
+---
+
+# 5. Основной принцип агентов
+
+Агенты НЕ должны быть отдельными сервисами.
+
+Не создавать:
+
+```text
+security-agent-server
+bug-agent-server
+judge-server
+router-server
+```
+
+Каждый агент должен быть обычным Python-классом.
+
+Базовый интерфейс:
+
+```python
+class Agent:
+    name: str
+
+    async def run(self, task):
+        ...
+```
+
+Пример:
+
+```python
+class SecurityAgent(Agent):
+    name = "security"
+
+    async def run(self, task):
+        ...
+```
+
+Все агенты работают внутри одного FastAPI процесса.
+
+---
+
+# 6. Orchestrator
+
+Создать центральный:
+
+```text
+Orchestrator
+```
+
+Он является главным компонентом backend.
+
+Orchestrator должен:
+
+1. получить задачу;
+2. определить тип задачи;
+3. выбрать агентов;
+4. запустить агентов;
+5. собрать результаты;
+6. передать результаты Judge;
+7. вернуть итоговый результат клиенту.
+
+Упрощённая логика:
+
+```python
+async def execute(task):
+    agents = router.select(task)
+
+    results = []
+
+    for agent in agents:
+        result = await agent.run(task)
+        results.append(result)
+
+    return await judge.evaluate(task, results)
+```
+
+Не усложнять эту систему.
+
+---
+
+# 7. AI Task Router
+
+Router определяет, какие агенты нужны.
+
+Пример:
+
+```text
+"Find security problems"
+        ↓
+SecurityAgent
+CodeReviewAgent
+ArchitectureAgent
+        ↓
+Judge
+```
+
+Другой запрос:
+
+```text
+"Why does authentication fail?"
+        ↓
+BugAgent
+SecurityAgent
+CodeAgent
+        ↓
+Judge
+```
+
+Router может первоначально использовать простой набор правил.
+
+Не требуется сразу делать сложный AI Router.
+
+Например:
+
+```python
+if "security" in task.lower():
+    ...
+```
+
+Позже архитектура должна позволять заменить его на LLM-based Router.
+
+---
+
+# 8. Code Detective
+
+Реализовать режим анализа кода.
+
+Пользователь может передать:
+
+* текст ошибки;
+* фрагмент кода;
+* описание проблемы;
+* небольшой набор файлов.
+
+Система должна попытаться найти:
+
+* bugs;
+* security problems;
+* architectural problems;
+* suspicious code;
+* dead code;
+* потенциальные ошибки.
+
+Каждый агент отвечает только за свою область.
+
+Например:
+
+```text
+SecurityAgent
+BugHunterAgent
+CodeReviewAgent
+ArchitectureAgent
+```
+
+Не нужно создавать сложный полноценный статический анализатор.
+
+LLM-based анализ допустим.
+
+---
+
+# 9. Agent Debate
+
+Добавить режим:
+
+```text
+DEBATE
+```
+
+Несколько агентов независимо рассматривают одну проблему.
+
+Например:
+
+```text
+Question:
+"Should this project use Redis?"
+```
+
+Запускаются:
+
+```text
+PerformanceAgent
+ArchitectureAgent
+SecurityAgent
+MinimalistAgent
+```
+
+Каждый возвращает:
+
+```json
+{
+  "agent": "architecture",
+  "opinion": "...",
+  "pros": [],
+  "cons": [],
+  "confidence": 0.8
+}
+```
+
+После этого:
+
+```text
+                    Question
+                       │
+        ┌──────────────┼──────────────┐
+        ▼              ▼              ▼
+    Agent A         Agent B         Agent C
+        │              │              │
+        └──────────────┼──────────────┘
+                       ▼
+                     Judge
+                       │
+                       ▼
+                    Decision
+```
+
+Judge должен сформировать единый итоговый ответ.
+
+---
+
+# 10. Judge
+
+Judge — специальный агент.
+
+Он получает:
+
+```text
+original task
++
+agent results
+```
+
+и возвращает:
+
+```json
+{
+  "decision": "...",
+  "summary": "...",
+  "confidence": 0.87,
+  "recommendations": []
+}
+```
+
+Judge не должен повторно анализировать весь проект без необходимости.
+
+Его задача:
+
+> сравнить результаты агентов и сформировать итог.
+
+---
+
+# 11. Ограничения для Replit Free
+
+Это критически важно.
+
+Система должна быть рассчитана на ограниченные ресурсы.
+
+Ввести:
+
+```python
+MAX_AGENTS = 4
+MAX_ITERATIONS = 3
+MAX_CONTEXT_SIZE = 12000
+MAX_OUTPUT_SIZE = 4000
+REQUEST_TIMEOUT = 60
+```
+
+Не создавать:
+
+* постоянные workers;
+* background daemon;
+* Redis;
+* Celery;
+* RabbitMQ;
+* Kafka;
+* Kubernetes;
+* Docker orchestration;
+* отдельные agent services.
+
+Один запрос должен обрабатываться как:
+
+```text
+HTTP Request
+    ↓
+Orchestrator
+    ↓
+Agents
+    ↓
+Judge
+    ↓
+HTTP Response
+```
+
+После завершения запроса сервер не должен продолжать выполнять задачу.
+
+---
+
+# 12. API
+
+Минимальный API:
+
+```text
+POST /api/tasks
+```
+
+Запуск задачи.
+
+Request:
+
+```json
+{
+  "task": "Find security problems in this code",
+  "mode": "detective",
+  "context": "..."
+}
+```
+
+Response:
+
+```json
+{
+  "task_id": "...",
+  "mode": "detective",
+  "agents": [],
+  "result": {},
+  "execution_time": 1.42
+}
+```
+
+---
+
+## Дополнительные endpoints
+
+```text
+GET /api/health
+```
+
+```text
+GET /api/agents
+```
+
+```text
+GET /api/tasks/{task_id}
+```
+
+Историю можно хранить только в памяти на первом этапе.
+
+Не подключать PostgreSQL без необходимости.
+
+---
+
+# 13. Frontend
+
+Создать простую React UI.
+
+Главный экран:
+
+```text
+┌─────────────────────────────────────────────┐
+│ AgentLab                                    │
+│ Multi-Agent Development Assistant           │
+├─────────────────────────────────────────────┤
+│                                             │
+│ Task                                        │
+│ ┌─────────────────────────────────────────┐ │
+│ │ Find security problems in this code... │ │
+│ └─────────────────────────────────────────┘ │
+│                                             │
+│ Mode                                        │
+│ [ Detective ▼ ]                             │
+│                                             │
+│              [ Run Analysis ]               │
+│                                             │
+├─────────────────────────────────────────────┤
+│ Execution                                   │
+│                                             │
+│ ✓ Router                                    │
+│ ✓ Security Agent                            │
+│ ✓ Bug Hunter                                │
+│ ✓ Code Review                               │
+│ → Judge                                     │
+│                                             │
+├─────────────────────────────────────────────┤
+│ Result                                      │
+│                                             │
+│ ...                                         │
+└─────────────────────────────────────────────┘
+```
+
+---
+
+# 14. Режимы
+
+Frontend должен поддерживать минимум:
+
+```text
+Detective
+Debate
+Auto
+```
+
+### Detective
+
+Поиск проблем.
+
+### Debate
+
+Несколько агентов рассматривают один вопрос.
+
+### Auto
+
+Router самостоятельно выбирает стратегию.
+
+---
+
+# 15. Execution Visualization
+
+Очень желательно показать пользователю pipeline выполнения.
+
+Например:
+
+```text
+Task
+ ↓
+Router ✓
+ ↓
+Security Agent ✓
+ ↓
+Bug Agent ✓
+ ↓
+Architecture Agent ✓
+ ↓
+Judge ✓
+ ↓
+Result
+```
+
+Не нужно делать настоящий real-time event system.
+
+Можно вернуть execution steps после завершения запроса.
+
+Если реализация проста — разрешается использовать Server-Sent Events, но это НЕ является обязательным требованием.
+
+---
+
+# 16. Структура проекта
+
+Использовать следующую структуру:
+
+```text
+agentlab/
+│
+├── backend/
+│   ├── app/
+│   │   ├── __init__.py
+│   │   ├── main.py
+│   │   │
+│   │   ├── api/
+│   │   │   └── tasks.py
+│   │   │
+│   │   ├── agents/
+│   │   │   ├── __init__.py
+│   │   │   ├── base.py
+│   │   │   ├── router.py
+│   │   │   ├── security.py
+│   │   │   ├── bug_hunter.py
+│   │   │   ├── code_review.py
+│   │   │   ├── architecture.py
+│   │   │   └── judge.py
+│   │   │
+│   │   ├── core/
+│   │   │   ├── config.py
+│   │   │   └── orchestrator.py
+│   │   │
+│   │   └── models/
+│   │       └── task.py
+│   │
+│   └── requirements.txt
+│
+├── frontend/
+│   ├── src/
+│   │   ├── components/
+│   │   ├── App.tsx
+│   │   ├── main.tsx
+│   │   └── api.ts
+│   │
+│   ├── package.json
+│   └── vite.config.ts
+│
+├── README.md
+└── .gitignore
+```
+
+---
+
+# 17. LLM abstraction
+
+Не привязывать архитектуру агентов непосредственно к конкретному провайдеру.
+
+Создать простой интерфейс:
+
+```python
+class LLMProvider:
+
+    async def generate(
+        self,
+        system_prompt: str,
+        user_prompt: str
+    ) -> str:
+        ...
+```
+
+Агенты должны обращаться к нему:
+
+```python
+response = await llm.generate(
+    system_prompt=...,
+    user_prompt=...
+)
+```
+
+Это позволит позже подключить:
+
+* OpenAI
+* Gemini
+* Anthropic
+* OpenRouter
+* локальную модель
+
+без переписывания агентов.
+
+---
+
+# 18. Environment variables
+
+Использовать `.env`.
+
+Минимально:
+
+```text
+LLM_PROVIDER=
+LLM_API_KEY=
+LLM_MODEL=
+```
+
+Никогда не помещать API key в frontend.
+
+Все обращения к LLM выполняются только backend.
+
+---
+
+# 19. Database
+
+На первом этапе:
+
+**НЕ использовать PostgreSQL.**
+
+История задач может храниться:
+
+```python
+dict
+```
+
+или простой in-memory repository.
+
+Если архитектура требует repository abstraction:
+
+```text
+TaskRepository
+```
+
+с реализацией:
+
+```text
+MemoryTaskRepository
+```
+
+Позже можно добавить PostgreSQL, не изменяя API.
+
+---
+
+# 20. Не делать сейчас
+
+Не добавлять:
+
+* authentication;
+* JWT;
+* users;
+* billing;
+* subscriptions;
+* marketplace;
+* MCP;
+* Kubernetes;
+* Redis;
+* Celery;
+* Docker;
+* microservices;
+* PostgreSQL;
+* vector database;
+* RAG;
+* сложную память агентов;
+* autonomous infinite agents;
+* сложную event bus architecture.
+
+Это всё сознательно исключено из MVP.
+
+---
+
+# 21. Главная архитектурная идея
+
+Проект должен демонстрировать именно:
+
+```text
+             TASK
+               │
+               ▼
+            ROUTER
+               │
+        ┌──────┼──────┐
+        ▼      ▼      ▼
+      AGENT  AGENT  AGENT
+        │      │      │
+        └──────┼──────┘
+               ▼
+             JUDGE
+               │
+               ▼
+             RESULT
+```
+
+А не просто:
+
+```text
+React → LLM → Response
+```
+
+Orchestrator должен быть самостоятельным архитектурным компонентом.
+
+---
+
+# 22. Критерии успеха MVP
+
+MVP считается готовым, если:
+
+1. React frontend запускается.
+2. Python FastAPI backend запускается.
+3. Frontend успешно обращается к FastAPI.
+4. Можно отправить задачу.
+5. Router выбирает агентов.
+6. Минимум 3 агента могут работать.
+7. Несколько агентов могут анализировать одну задачу.
+8. Judge объединяет результаты.
+9. Пользователь видит execution pipeline.
+10. Есть режим Detective.
+11. Есть режим Debate.
+12. Есть режим Auto.
+13. API key не попадает во frontend.
+14. Backend остаётся полностью Python.
+15. Проект не требует PostgreSQL/Redis/Celery для запуска.
+16. Проект подходит для запуска на бесплатном Replit.
+
+---
+
+# 23. Правило против усложнения
+
+Если при реализации возникает выбор:
+
+```text
+простое решение
+        VS
+сложная масштабируемая архитектура
+```
+
+для MVP всегда выбирать:
+
+> **простое решение.**
+
+Не создавать abstraction только ради abstraction.
+
+Не создавать отдельный сервис, если достаточно класса.
+
+Не создавать базу данных, если достаточно памяти.
+
+Не создавать очередь, если достаточно обычного async вызова.
+
+Не создавать сложный frontend, если достаточно React-компонента.
+
+---
+
+# 24. Порядок разработки
+
+Разрабатывать последовательно:
+
+### Phase 1
+
+Python/FastAPI backend.
+
+Создать:
+
+```text
+FastAPI
+Task API
+Agent base
+Orchestrator
+```
+
+### Phase 2
+
+Добавить:
+
+```text
+SecurityAgent
+BugHunterAgent
+CodeReviewAgent
+ArchitectureAgent
+Judge
+```
+
+### Phase 3
+
+Добавить:
+
+```text
+Task Router
+Detective mode
+Debate mode
+Auto mode
+```
+
+### Phase 4
+
+Создать React frontend.
+
+### Phase 5
+
+Подключить frontend к backend.
+
+### Phase 6
+
+Добавить execution visualization.
+
+### Phase 7
+
+Проверить запуск непосредственно в Replit.
+
+---
+
+# 25. Важное требование к Replit Agent
+
+Перед написанием большого количества кода:
+
+1. Проверь существующую структуру проекта.
+2. Если проект пустой — создай структуру согласно этому документу.
+3. Не заменяй Python backend на TypeScript.
+4. Не используй Node.js для backend.
+5. Не добавляй ненужные зависимости.
+6. Не устанавливай инфраструктурные сервисы.
+7. Сначала реализуй минимальный рабочий backend.
+8. После этого добавляй агентов.
+9. Затем frontend.
+10. После каждой фазы проверяй запуск.
+
+Не пытайся реализовать весь проект одним большим изменением.
+
+---
+
+# 26. Финальная проверка
+
+После реализации выполнить:
+
+```text
+Backend starts successfully
+        ↓
+GET /api/health
+        ↓
+Frontend starts successfully
+        ↓
+React → FastAPI
+        ↓
+Task
+        ↓
+Router
+        ↓
+Agents
+        ↓
+Judge
+        ↓
+Result
+```
+
+Исправить ошибки запуска и интеграции.
+
+Не добавлять новые функции, пока основной pipeline не работает.
+
+# Итог
+
+Создать небольшой, понятный и расширяемый **AgentLab**, где главным объектом является **Python Orchestrator**, управляющий специализированными AI-агентами.
+
+Строго соблюдать:
+
+**Frontend: React + TypeScript + Vite**
+
+**Backend: Python + FastAPI + Pydantic + Uvicorn**
+
+**Agent System: Python**
+
+**Orchestration: Python**
+
+**LLM Integration: Python**
+
+**No TypeScript/Node.js backend.**
+
+**No unnecessary infrastructure.**
+
+Проект должен быть достаточно маленьким, чтобы полностью работать в рамках ограничений бесплатного Replit.

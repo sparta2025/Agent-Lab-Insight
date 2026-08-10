@@ -1,0 +1,28 @@
+kind = "web"
+previewPath = "/"
+title = "AgentLab"
+description = "A lightweight multi-agent development analysis workspace where an orchestrator routes coding tasks to specialist agents, compares their findings, and presents a judged result."
+version = "1.0.0"
+id = "artifacts/agentlab"
+router = "path"
+
+[[services]]
+name = "web"
+paths = [ "/" ]
+localPort = 22632
+
+[services.development]
+run = "pnpm --filter @workspace/agentlab run dev"
+
+[services.production]
+build = [ "pnpm", "--filter", "@workspace/agentlab", "run", "build" ]
+serve = "static"
+publicDir = "artifacts/agentlab/dist/public"
+
+[[services.production.rewrites]]
+from = "/*"
+to = "/index.html"
+
+[services.env]
+PORT = "22632"
+BASE_PATH = "/"
