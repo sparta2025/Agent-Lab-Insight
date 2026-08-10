@@ -10,6 +10,10 @@ servers:
 tags:
   - name: health
     description: Health operations
+  - name: tasks
+    description: Multi-agent orchestration operations
+  - name: agents
+    description: Available specialist agents
 paths:
   /healthz:
     get:
@@ -24,6 +28,81 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/HealthStatus"
+  /agents:
+    get:
+      operationId: listAgents
+      tags: [agents]
+      summary: List available agents
+      responses:
+        "200":
+          description: Available specialist agents
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/AgentInfo"
+  /tasks:
+    get:
+      operationId: listTasks
+      tags: [tasks]
+      summary: List recent tasks
+      responses:
+        "200":
+          description: Recent task executions
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/TaskRecord"
+    post:
+      operationId: createTask
+      tags: [tasks]
+      summary: Execute a routed multi-agent task
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/TaskInput"
+      responses:
+        "200":
+          description: Completed task execution
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TaskRecord"
+        "400":
+          description: Invalid task
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+  /tasks/{taskId}:
+    get:
+      operationId: getTask
+      tags: [tasks]
+      summary: Get a task execution by id
+      parameters:
+        - name: taskId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Task execution
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TaskRecord"
+        "404":
+          description: Task not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
 components:
   schemas:
     HealthStatus:
@@ -33,4 +112,134 @@ components:
           type: string
       required:
         - status
+    TaskMode:
+      type: string
+      enum: [detective, debate, auto]
+    TaskInput:
+      type: object
+      required: [task, mode]
+      properties:
+        task:
+          type: string
+          minLength: 3
+          maxLength: 4000
+        mode:
+          $ref: "#/components/schemas/TaskMode"
+        context:
+          type: string
+          maxLength: 12000
+    AgentInfo:
+      type: object
+      required: [id, name, focus]
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        focus:
+          type: string
+    Finding:
+      type: object
+      required: [title, severity, detail]
+      properties:
+        title:
+          type: string
+        severity:
+          type: string
+          enum: [critical, high, medium, low, info]
+        detail:
+          type: string
+        recommendation:
+          type: string
+    AgentResult:
+      type: object
+      required: [agent, label, focus, summary, findings, confidence]
+      properties:
+        agent:
+          type: string
+        label:
+          type: string
+        focus:
+          type: string
+        summary:
+          type: string
+        findings:
+          type: array
+          items:
+            $ref: "#/components/schemas/Finding"
+        opinion:
+          type: string
+        pros:
+          type: array
+          items:
+            type: string
+        cons:
+          type: array
+          items:
+            type: string
+        confidence:
+          type: number
+    JudgeResult:
+      type: object
+      required: [decision, summary, confidence, recommendations]
+      properties:
+        decision:
+          type: string
+        summary:
+          type: string
+        confidence:
+          type: number
+        recommendations:
+          type: array
+          items:
+            type: string
+    ExecutionStep:
+      type: object
+      required: [id, label, status, detail]
+      properties:
+        id:
+          type: string
+        label:
+          type: string
+        status:
+          type: string
+          enum: [complete, active, queued, error]
+        detail:
+          type: string
+        duration:
+          type: number
+    TaskRecord:
+      type: object
+      required: [taskId, task, mode, context, agents, result, executionTime, steps, createdAt, provider]
+      properties:
+        taskId:
+          type: string
+        task:
+          type: string
+        mode:
+          $ref: "#/components/schemas/TaskMode"
+        context:
+          type: string
+        agents:
+          type: array
+          items:
+            $ref: "#/components/schemas/AgentResult"
+        result:
+          $ref: "#/components/schemas/JudgeResult"
+        executionTime:
+          type: number
+        steps:
+          type: array
+          items:
+            $ref: "#/components/schemas/ExecutionStep"
+        createdAt:
+          type: string
+        provider:
+          type: string
+    ErrorResponse:
+      type: object
+      required: [error]
+      properties:
+        error:
+          type: string
 
