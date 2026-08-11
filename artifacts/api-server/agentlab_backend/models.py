@@ -5,6 +5,7 @@ from typing import Literal
 from pydantic import BaseModel, Field
 
 TaskMode = Literal["detective", "debate", "auto"]
+TaskStatus = Literal["running", "complete", "error"]
 Severity = Literal["critical", "high", "medium", "low", "info"]
 StepStatus = Literal["complete", "active", "queued", "error"]
 
@@ -59,6 +60,7 @@ class TaskRecord(BaseModel):
     task_id: str = Field(alias="taskId")
     task: str
     mode: TaskMode
+    status: TaskStatus
     context: str
     agents: list[AgentResult]
     result: JudgeResult

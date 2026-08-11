@@ -18,3 +18,4 @@ export * from './judgeResult';
 export * from './taskInput';
 export * from './taskMode';
 export * from './taskRecord';
+export * from './taskStatus';

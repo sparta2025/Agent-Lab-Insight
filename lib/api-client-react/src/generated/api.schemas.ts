@@ -18,6 +18,15 @@ export const TaskMode = {
   auto: 'auto',
 } as const;
 
+export type TaskStatus = typeof TaskStatus[keyof typeof TaskStatus];
+
+
+export const TaskStatus = {
+  running: 'running',
+  complete: 'complete',
+  error: 'error',
+} as const;
+
 export interface TaskInput {
   /**
      * @minLength 3
@@ -93,6 +102,7 @@ export interface ExecutionStep {
 export interface TaskRecord {
   taskId: string;
   task: string;
+  status: TaskStatus;
   mode: TaskMode;
   context: string;
   agents: AgentResult[];

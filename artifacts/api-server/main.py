@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import logging
+import asyncio
 from collections import OrderedDict
 
 from fastapi import FastAPI, HTTPException
@@ -45,13 +46,18 @@ async def list_tasks() -> list[TaskRecord]:
 
 @app.post("/api/tasks", response_model=TaskRecord)
 async def create_task(task: TaskInput) -> TaskRecord:
-    record = await orchestrator.execute(task)
+    record = orchestrator.create_record(task)
     history[record.task_id] = record
     history.move_to_end(record.task_id)
+    asyncio.create_task(run_task(record.task_id, task, record))
+    return record
+
+
+async def run_task(task_id: str, task: TaskInput, record: TaskRecord) -> None:
+    await orchestrator.execute(task, record, on_update=lambda current: history.__setitem__(task_id, current))
     while len(history) > MAX_HISTORY:
         history.popitem(last=False)
     logger.info("Completed %s with %s agents in %.2fs", record.task_id, len(record.agents), record.execution_time)
-    return record
 
 
 @app.get("/api/tasks/{task_id}", response_model=TaskRecord)

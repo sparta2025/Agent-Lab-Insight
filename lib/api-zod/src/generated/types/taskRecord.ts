@@ -9,10 +9,12 @@ import type { AgentResult } from './agentResult';
 import type { ExecutionStep } from './executionStep';
 import type { JudgeResult } from './judgeResult';
 import type { TaskMode } from './taskMode';
+import type { TaskStatus } from './taskStatus';
 
 export interface TaskRecord {
   taskId: string;
   task: string;
+  status: TaskStatus;
   mode: TaskMode;
   context: string;
   agents: AgentResult[];

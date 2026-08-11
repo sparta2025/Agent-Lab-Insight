@@ -29,6 +29,8 @@ class LLMProvider:
             self.client = AsyncOpenAI(
                 api_key=self.openrouter_key,
                 base_url="https://openrouter.ai/api/v1",
+                max_retries=0,
+                timeout=20.0,
                 default_headers={
                     "HTTP-Referer": "https://replit.com",
                     "X-Title": "AgentLab",
@@ -69,7 +71,7 @@ class LLMProvider:
                         {"role": "user", "content": user_prompt},
                     ],
                 ),
-                timeout=45,
+                timeout=22,
             )
             content = response.choices[0].message.content or ""
             return json.loads(_clip(content, MAX_OUTPUT_SIZE))
@@ -260,6 +262,15 @@ class MinimalistAgent(Agent):
 
 
 class Judge:
+    @staticmethod
+    def fallback_result(result_count: int = 0) -> JudgeResult:
+        return JudgeResult(
+            decision="Analysis in progress.",
+            summary=f"{result_count} specialist perspectives are being collected. The Judge will synthesize them when analysis completes.",
+            confidence=0.0,
+            recommendations=[],
+        )
+
     async def evaluate(
         self,
         task: TaskInput,

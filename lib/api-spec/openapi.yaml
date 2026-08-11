@@ -115,6 +115,9 @@ components:
     TaskMode:
       type: string
       enum: [detective, debate, auto]
+    TaskStatus:
+      type: string
+      enum: [running, complete, error]
     TaskInput:
       type: object
       required: [task, mode]
@@ -210,12 +213,14 @@ components:
           type: number
     TaskRecord:
       type: object
-      required: [taskId, task, mode, context, agents, result, executionTime, steps, createdAt, provider]
+      required: [taskId, task, mode, status, context, agents, result, executionTime, steps, createdAt, provider]
       properties:
         taskId:
           type: string
         task:
           type: string
+        status:
+          $ref: "#/components/schemas/TaskStatus"
         mode:
           $ref: "#/components/schemas/TaskMode"
         context:

@@ -34,6 +34,7 @@ export const ListAgentsResponse = zod.array(ListAgentsResponseItem)
 export const ListTasksResponseItem = zod.object({
   "taskId": zod.string(),
   "task": zod.string(),
+  "status": zod.enum(['running', 'complete', 'error']),
   "mode": zod.enum(['detective', 'debate', 'auto']),
   "context": zod.string(),
   "agents": zod.array(zod.object({
@@ -91,6 +92,7 @@ export const CreateTaskBody = zod.object({
 export const CreateTaskResponse = zod.object({
   "taskId": zod.string(),
   "task": zod.string(),
+  "status": zod.enum(['running', 'complete', 'error']),
   "mode": zod.enum(['detective', 'debate', 'auto']),
   "context": zod.string(),
   "agents": zod.array(zod.object({
@@ -138,6 +140,7 @@ export const GetTaskParams = zod.object({
 export const GetTaskResponse = zod.object({
   "taskId": zod.string(),
   "task": zod.string(),
+  "status": zod.enum(['running', 'complete', 'error']),
   "mode": zod.enum(['detective', 'debate', 'auto']),
   "context": zod.string(),
   "agents": zod.array(zod.object({
